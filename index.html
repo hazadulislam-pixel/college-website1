@@ -179,6 +179,16 @@ img{max-width:100%}
 .mapsvg .pin{fill:var(--alert)}.mapsvg .pin-dot{fill:#fff}
 .addr{margin:0 0 .7rem;font-size:.95rem}
 
+/* ---------- board notice widgets ---------- */
+.bnote{margin:0 0 .7rem;font-size:.93rem;color:var(--muted)}
+.blist{list-style:none;margin:0 0 .8rem;padding:0}
+.blist li{padding:.5rem 0 .5rem 1.1rem;border-bottom:1px dashed var(--line);position:relative;line-height:1.55}
+.blist li:last-child{border-bottom:0}
+.blist li::before{content:"";position:absolute;left:.1rem;top:.95rem;width:.42rem;height:.42rem;background:var(--accent);transform:rotate(45deg)}
+.blist a{color:var(--ink);text-decoration:none;font-weight:500;font-size:.95rem}
+.blist a:hover{color:var(--link);text-decoration:underline}
+.blist small{display:block;color:var(--muted);font-size:.8rem}
+
 /* ---------- content blocks ---------- */
 .facts{width:100%;border-collapse:collapse;margin-top:.6rem}
 .facts th,.facts td{text-align:left;padding:.5rem .7rem;border:1px solid var(--line);vertical-align:top}
@@ -193,7 +203,7 @@ img{max-width:100%}
 .pmsg .muted{display:block;margin-bottom:.8rem}
 @media (max-width:560px){.pmsg{grid-template-columns:1fr}.pmsg .avatar{width:120px;height:120px}}
 .search{margin-bottom:1rem}
-.search input,.fld input,.fld textarea,.login input{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:.55rem .7rem}
+.search input,.fld input,.fld textarea,.fld select,.login input{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:.55rem .7rem}
 .people{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.8rem}
 .person{display:flex;gap:.8rem;align-items:center;padding:.75rem;border:1px solid var(--line);border-radius:3px;background:var(--panel)}
 .person b{display:block;line-height:1.4}
@@ -334,14 +344,19 @@ function ssDel(k) { try { sessionStorage.removeItem(k); } catch (e) {} }
 /* ---------- data ---------- */
 var D;
 try { D = JSON.parse(document.getElementById('site-data').textContent); } catch (e) { D = {}; }
-var LISTS = ['notices','slides','teachers','staff','results','gallery','videos','pages','events','footerLinks'];
+var LISTS = ['notices','slides','teachers','staff','results','gallery','videos','pages','events','footerLinks','boardNotices'];
+var DEFAULT_BOARDS = [
+  { id: 'board-dinajpur', title: 'দিনাজপুর শিক্ষা বোর্ডের সকল নোটিশ', url: 'https://dinajpureducationboard.gov.bd/site/view/notices', note: '' },
+  { id: 'board-nu', title: 'জাতীয় বিশ্ববিদ্যালয়ের সকল নোটিশ', url: 'https://www.nu.ac.bd/recent-news-notice.php', note: '' }
+];
 function normalize() {
   LISTS.forEach(function (k) { if (!Array.isArray(D[k])) D[k] = []; });
+  if (!Array.isArray(D.boards)) D.boards = DEFAULT_BOARDS.map(function (b) { return Object.assign({}, b); });
   D.about = D.about || {}; if (!Array.isArray(D.about.facts)) D.about.facts = [];
   D.admission = D.admission || {}; if (!Array.isArray(D.admission.points)) D.admission.points = [];
   D.principal = D.principal || {}; D.contact = D.contact || {};
   D.admin = D.admin || { id: 'admin', salt: 's', hash: '', isDefault: true };
-  [D.notices, D.slides, D.teachers, D.staff, D.results, D.gallery, D.videos, D.pages, D.events, D.footerLinks, D.about.facts, D.admission.points].forEach(function (a) {
+  [D.notices, D.slides, D.teachers, D.staff, D.results, D.gallery, D.videos, D.pages, D.events, D.footerLinks, D.boards, D.boardNotices, D.about.facts, D.admission.points].forEach(function (a) {
     a.forEach(function (it) { if (!it.id) it.id = uid(); });
   });
 }
@@ -429,6 +444,16 @@ function calBody() {
   return '<div class="cal-head"><button data-act="cal-prev" aria-label="আগের মাস">‹</button><b>' + MON[m] + ' ' + bn(y) + '</b><button data-act="cal-next" aria-label="পরের মাস">›</button></div><div class="cal-grid">' + h + '</div>' + list;
 }
 function wCalendar() { return '<section class="widget"><h2>ক্যালেন্ডার</h2><div class="wb" id="cal">' + calBody() + '</div></section>'; }
+function wBoard(b) {
+  var url = safeUrl(b.url);
+  var items = D.boardNotices.filter(function (n) { return n.board === b.id; }).sort(function (x, y) { return String(y.date || '').localeCompare(String(x.date || '')); }).slice(0, 5);
+  var list = items.length ? '<ul class="blist">' + items.map(function (n) {
+    var u = safeUrl(n.url);
+    return '<li>' + (u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(n.title) + '</a>' : '<span>' + esc(n.title) + '</span>') + (n.date ? '<small>' + esc(fmtDate(n.date)) + '</small>' : '') + '</li>';
+  }).join('') + '</ul>' : '';
+  var note = b.note ? '<p class="bnote">' + esc(b.note) + '</p>' : (items.length ? '' : '<p class="bnote">সর্বশেষ সকল নোটিশ অফিসিয়াল ওয়েবসাইটে দেখুন।</p>');
+  return '<section class="widget"><h2>' + esc(b.title) + '</h2><div class="wb">' + note + list + (url ? '<a class="btn" href="' + esc(url) + '" target="_blank" rel="noopener">সকল নোটিশ দেখুন</a>' : '') + '</div></section>';
+}
 function mapUrl() { return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(D.contact.mapQuery || D.contact.address || ''); }
 function wMap() {
   var svg = '<svg class="mapsvg" viewBox="0 0 260 130" role="img" aria-label="ম্যাপের চিত্র"><rect class="g" width="260" height="130"/><rect class="b" x="14" y="12" width="70" height="38" rx="3"/><rect class="b" x="98" y="12" width="60" height="38" rx="3"/><rect class="b" x="176" y="14" width="70" height="30" rx="3"/><rect class="b" x="14" y="82" width="52" height="36" rx="3"/><rect class="b" x="176" y="84" width="70" height="34" rx="3"/><path class="r" d="M0 65 H260"/><path class="r" d="M90 0 V130"/><path class="r" d="M0 118 L260 20"/><path class="r2" d="M0 65 H260"/><path class="r2" d="M90 0 V130"/><path class="pin" d="M130 58c-11 0-18 8-18 17 0 13 18 30 18 30s18-17 18-30c0-9-7-17-18-17z"/><circle class="pin-dot" cx="130" cy="74" r="6"/></svg>';
@@ -570,7 +595,7 @@ function footer() {
   return '<footer class="foot"><div class="foot-in"><div><h2>' + esc(D.name) + '</h2>' + (c.address ? '<p>' + esc(c.address) + '</p>' : '') + (c.phone ? '<p>ফোন: ' + esc(c.phone) + '</p>' : '') + (c.email ? '<p>ইমেইল: ' + esc(c.email) + '</p>' : '') + '</div><div><h2>গুরুত্বপূর্ণ লিংক</h2>' + (links ? '<ul>' + links + '</ul>' : '<p>কোনো লিংক যোগ করা হয়নি।</p>') + '</div></div><div class="foot-bar"><span>' + esc(D.footerNote) + '</span><a href="#/admin">অ্যাডমিন লগইন</a></div></footer>';
 }
 function siteView() {
-  return header() + ticker() + menu() + '<div class="wrap"><div class="layout"><main class="col-main" id="main" tabindex="-1">' + page() + '</main><aside class="col-left" aria-label="বাম সাইডবার">' + wPrincipal() + wCalendar() + '</aside><aside class="col-right" aria-label="ডান সাইডবার">' + wNotices() + wMap() + '</aside></div></div>' + footer();
+  return header() + ticker() + menu() + '<div class="wrap"><div class="layout"><main class="col-main" id="main" tabindex="-1">' + page() + '</main><aside class="col-left" aria-label="বাম সাইডবার">' + wPrincipal() + wCalendar() + D.boards.map(wBoard).join('') + '</aside><aside class="col-right" aria-label="ডান সাইডবার">' + wNotices() + wMap() + '</aside></div></div>' + footer();
 }
 
 /* ---------- admin: schema ---------- */
@@ -589,6 +614,10 @@ var SECTIONS = [
   { key: 'videos', label: 'ভিডিও', blocks: [{ type: 'list', path: 'videos', title: 'ভিডিও তালিকা', titleKey: 'title', fields: [F('title', 'শিরোনাম'), F('url', 'ভিডিওর লিংক', 'url', { hint: 'ইউটিউব বা ফেসবুক ভিডিওর লিংক' }), F('note', 'ছোট বিবরণ')] }] },
   { key: 'pages', label: 'অন্যান্য পাতা', blocks: [{ type: 'list', path: 'pages', title: 'নিজের পাতা (মেনুর "অন্যান্য" তালিকায় দেখাবে)', titleKey: 'title', fields: [F('title', 'পাতার নাম'), F('body', 'লেখা', 'textarea', { rows: 8 })] }] },
   { key: 'events', label: 'ক্যালেন্ডার', blocks: [{ type: 'list', path: 'events', title: 'ইভেন্ট ও ছুটির দিন (ক্যালেন্ডারে চিহ্নিত হবে)', titleKey: 'title', fields: [F('date', 'তারিখ', 'date'), F('title', 'ইভেন্টের নাম')] }] },
+  { key: 'boards', label: 'বোর্ড/বিশ্ববিদ্যালয়ের নোটিশ', blocks: [
+    { type: 'list', path: 'boards', title: 'বাম সাইডবারে ক্যালেন্ডারের নিচে দেখানো বক্স', titleKey: 'title', fields: [F('title', 'বক্সের শিরোনাম'), F('url', 'সকল নোটিশের লিংক', 'url', { hint: 'অফিসিয়াল ওয়েবসাইটের নোটিশ পাতার ঠিকানা' }), F('note', 'ছোট বিবরণ (ঐচ্ছিক)')] },
+    { type: 'list', path: 'boardNotices', title: 'গুরুত্বপূর্ণ নোটিশের শিরোনাম (ঐচ্ছিক, সর্বোচ্চ ৫টি করে দেখাবে)', titleKey: 'title', fields: [F('board', 'কোন বক্সে দেখাবে', 'select', { opts: function () { return D.boards.map(function (b) { return [b.id, b.title]; }); } }), F('title', 'নোটিশের শিরোনাম'), F('url', 'নোটিশের লিংক', 'url'), F('date', 'তারিখ', 'date')] }
+  ] },
   { key: 'contact', label: 'যোগাযোগ ও ম্যাপ', blocks: [{ type: 'single', path: 'contact', fields: [F('address', 'ঠিকানা'), F('phone', 'ফোন'), F('email', 'ইমেইল'), F('mapQuery', 'ম্যাপে খোঁজার লেখা', 'text', { hint: 'গুগল ম্যাপে যে নামে প্রতিষ্ঠান খুঁজে পাওয়া যায়, যেমন: "আদর্শ কলেজ, ঢাকা"। অক্ষাংশ,দ্রাঘিমাংশ (23.78,90.41) ও দেওয়া যায়।' })] }] },
   { key: 'footer', label: 'ফুটার লিংক', blocks: [{ type: 'list', path: 'footerLinks', title: 'গুরুত্বপূর্ণ লিংক', titleKey: 'label', fields: [F('label', 'লিংকের নাম'), F('url', 'ওয়েব ঠিকানা', 'url')] }] },
   { key: 'security', label: 'লগইন তথ্য', special: 'security' }
@@ -605,7 +634,9 @@ var NEWITEM = {
   videos: function () { return { title: 'নতুন ভিডিও', url: '', note: '' }; },
   pages: function () { return { title: 'নতুন পাতা', body: '' }; },
   events: function () { return { date: todayISO(), title: 'নতুন ইভেন্ট' }; },
-  footerLinks: function () { return { label: 'নতুন লিংক', url: '' }; }
+  footerLinks: function () { return { label: 'নতুন লিংক', url: '' }; },
+  boards: function () { return { title: 'নতুন বোর্ডের নোটিশ', url: '', note: '' }; },
+  boardNotices: function () { return { board: D.boards[0] ? D.boards[0].id : '', title: 'নতুন নোটিশ', url: '', date: todayISO() }; }
 };
 var TOP = { notices: 1, results: 1 };
 
@@ -620,7 +651,10 @@ function fieldHTML(f, obj, p, i) {
     ctl = '<div class="imgf"><div class="imgprev">' + (s ? '<img src="' + s + '" alt="">' : 'ছবি নেই') + '</div><label class="btn ghost small">ছবি বাছাই করুন<input type="file" accept="image/*" hidden data-img="1" data-w="' + (f.w || 1000) + '" data-fmt="' + (f.fmt || 'image/jpeg') + '" ' + at + '></label>' + (s ? '<button class="btn ghost small" data-act="clearimg" ' + at + '>ছবি সরান</button>' : '') + '</div>';
     return '<div class="fld"><span class="lbl">' + f.l + '</span>' + ctl + (f.hint ? '<small>' + f.hint + '</small>' : '') + '</div>';
   }
-  if (f.t === 'textarea') ctl = '<textarea id="' + id + '" rows="' + (f.rows || 5) + '" ' + at + '>' + esc(v) + '</textarea>';
+  if (f.t === 'select') {
+    var opts = typeof f.opts === 'function' ? f.opts() : (f.opts || []);
+    ctl = '<select id="' + id + '" ' + at + '>' + opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(v) === String(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+  } else if (f.t === 'textarea') ctl = '<textarea id="' + id + '" rows="' + (f.rows || 5) + '" ' + at + '>' + esc(v) + '</textarea>';
   else ctl = '<input id="' + id + '" type="' + (f.t === 'date' ? 'date' : f.t === 'url' ? 'url' : 'text') + '" value="' + esc(v) + '" ' + at + '>';
   return '<div class="fld"><label for="' + id + '">' + f.l + '</label>' + ctl + (f.hint ? '<small>' + f.hint + '</small>' : '') + '</div>';
 }
